@@ -4,10 +4,12 @@ import (
 	"io"
 	"shortener/internal/config"
 	"shortener/internal/handler"
+	"shortener/internal/middleware"
 	"shortener/internal/repository"
 	"shortener/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -17,13 +19,17 @@ func main() {
 		gin.DefaultWriter = io.Discard // Отключает логи запросов
 	}
 
+	logger, _ := zap.NewProduction()
+
 	// Пока сохраним все в памяти, позже заменим на БД.
 	storage := repository.NewInMemoryStorage()
 
 	shortener := service.NewShortener(storage, cfg.BaseURL, service.RandomUUID)
 	h := handler.NewHandler(shortener)
 
-	router := gin.Default()
+	router := gin.New()
+
+	router.Use(middleware.ZapLogger(logger))
 
 	router.POST("/", h.CreateShortLink)
 	router.GET("/:shortLink", h.Redirect)
