@@ -32,6 +32,7 @@ func main() {
 	router.Use(middleware.ZapLogger(logger))
 
 	router.POST("/", h.CreateShortLink)
+	router.POST("/api/shorten", h.CreateShortLinkFromJSON)
 	router.GET("/:shortLink", h.Redirect)
 
 	router.NoRoute(h.Default)
