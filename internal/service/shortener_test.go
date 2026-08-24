@@ -10,32 +10,32 @@ import (
 )
 
 const (
-	testBaseURL  = "http://localhost:8080"
-	testShortUrl = "d979ee5b-4f6b-4a1f-8c3d-0f2f1b2c3d4e"
-	testURL      = "https://practicum.yandex.ru/"
+	testBaseURL = "http://localhost:8080"
+	testSlug    = "d979ee5b-4f6b-4a1f-8c3d-0f2f1b2c3d4e"
+	testURL     = "https://practicum.yandex.ru/"
 )
 
-func stubShortUrlGenerator() (string, error) {
-	return testShortUrl, nil
+func stubSlugGenerator() (string, error) {
+	return testSlug, nil
 }
 
 func TestShortenerShorten(t *testing.T) {
 	tests := []struct {
-		name        string
-		genShortUrl ShortUrlGenerator
-		url         string
-		want        string
-		wantErr     bool
+		name    string
+		genSlug SlugGenerator
+		url     string
+		want    string
+		wantErr bool
 	}{
 		{
-			name:        "positive: returns short link with generated short URL",
-			genShortUrl: stubShortUrlGenerator,
-			url:         testURL,
-			want:        testBaseURL + "/" + testShortUrl,
+			name:    "positive: returns short link with generated slug",
+			genSlug: stubSlugGenerator,
+			url:     testURL,
+			want:    testBaseURL + "/" + testSlug,
 		},
 		{
 			name: "negative: ID generator failure",
-			genShortUrl: func() (string, error) {
+			genSlug: func() (string, error) {
 				return "", errors.New("random source unavailable")
 			},
 			url:     testURL,
@@ -46,7 +46,7 @@ func TestShortenerShorten(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := repository.NewInMemoryStorage()
-			s := NewShortener(storage, testBaseURL, tt.genShortUrl)
+			s := NewShortener(storage, testBaseURL, tt.genSlug)
 
 			got, err := s.Shorten(tt.url)
 
@@ -62,15 +62,15 @@ func TestShortenerShorten(t *testing.T) {
 			}
 
 			if got != tt.want {
-				t.Errorf("short URL: got %q, want %q", got, tt.want)
+				t.Errorf("slug: got %q, want %q", got, tt.want)
 			}
 
-			saved, ok := storage.GetURL(testShortUrl)
+			savedURL, ok := storage.GetURL(testSlug)
 			if !ok {
 				t.Fatal("URL was not saved to storage")
 			}
-			if saved != tt.url {
-				t.Errorf("saved URL: got %q, want %q", saved, tt.url)
+			if savedURL != tt.url {
+				t.Errorf("saved URL: got %q, want %q", savedURL, tt.url)
 			}
 		})
 	}
@@ -78,13 +78,13 @@ func TestShortenerShorten(t *testing.T) {
 
 func TestShortenerShortenDuplicate(t *testing.T) {
 	calls := 0
-	genShortUrl := func() (string, error) {
+	genSlug := func() (string, error) {
 		calls++
-		return testShortUrl, nil
+		return testSlug, nil
 	}
 
 	storage := repository.NewInMemoryStorage()
-	s := NewShortener(storage, testBaseURL, genShortUrl)
+	s := NewShortener(storage, testBaseURL, genSlug)
 
 	first, err := s.Shorten(testURL)
 	if err != nil {
@@ -113,13 +113,13 @@ func TestShortenerResolve(t *testing.T) {
 		found    bool
 	}{
 		{
-			name:     "positive: existing short URL",
-			shortUrl: testShortUrl,
+			name:     "positive: existing slug",
+			shortUrl: testSlug,
 			want:     testURL,
 			found:    true,
 		},
 		{
-			name:     "negative: unknown short URL",
+			name:     "negative: unknown slug",
 			shortUrl: "00000000",
 			found:    false,
 		},
@@ -128,8 +128,8 @@ func TestShortenerResolve(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := repository.NewInMemoryStorage()
-			s := NewShortener(storage, testBaseURL, stubShortUrlGenerator)
-			storage.CreateShortUrl(testURL, testShortUrl)
+			s := NewShortener(storage, testBaseURL, stubSlugGenerator)
+			storage.SaveURL(testURL, testSlug)
 
 			got, found := s.Resolve(tt.shortUrl)
 

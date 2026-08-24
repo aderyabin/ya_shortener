@@ -3,47 +3,53 @@ package repository
 import "sync"
 
 // InMemoryStorage — потокобезопасное in-memory хранилище ссылок.
-// Ключ мапы — исходный URL, значение — короткая ссылка.
+// urls — от короткой ссылки к исходному URL для быстрого разрешения по ID,
+// shortIDs — от исходного URL к короткой ссылке для проверки дубликатов,
+// registered — исходные URL в порядке регистрации.
 type InMemoryStorage struct {
-	mu   sync.RWMutex
-	urls map[string]string
+	mu        sync.RWMutex
+	slugToURL map[string]string // короткая ссылка -> исходный URL
+	urlToSlug map[string]string // исходный URL -> короткая ссылка (делаем ради ускорения поиска существующих коротких ссылок)
 }
 
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
-		urls: make(map[string]string),
+		slugToURL: make(map[string]string),
+		urlToSlug: make(map[string]string),
 	}
 }
 
-// CreateShortUrl сохраняет пару «URL — короткая ссылка».
-func (s *InMemoryStorage) CreateShortUrl(url, shortUrl string) {
+// SaveURL сохраняет ссылку.
+func (s *InMemoryStorage) SaveURL(url, slug string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.urls[url] = shortUrl
+	// Если URL уже существует, удаляем старую короткую ссылку,
+	// чтобы избежать дубликатов и сохранить целостность данных.
+	if oldSlug, ok := s.urlToSlug[url]; ok {
+		delete(s.slugToURL, oldSlug)
+	}
+
+	s.slugToURL[slug] = url
+	s.urlToSlug[url] = slug
 }
 
-// GetShortUrl возвращает коротку по исходному URL.
-// Если исходный URL не найден, возвращает пустую строку и false.
-func (s *InMemoryStorage) GetShortUrl(url string) (string, bool) {
+// Exists Возвращает короткий урл по исходному URL и true, если она существует,
+// иначе пустую строку и false.
+func (s *InMemoryStorage) Exists(url string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	id, ok := s.urls[url]
-	return id, ok
+	slug, ok := s.urlToSlug[url]
+	return slug, ok
 }
 
 // GetURL возвращает исходный URL по короткой ссылке.
 // Если короткая ссылка не найдена, возвращает пустую строку и false.
-func (s *InMemoryStorage) GetURL(shortUrl string) (string, bool) {
+func (s *InMemoryStorage) GetURL(slug string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	for url, storedID := range s.urls {
-		if storedID == shortUrl {
-			return url, true
-		}
-	}
-
-	return "", false
+	url, ok := s.slugToURL[slug]
+	return url, ok
 }
