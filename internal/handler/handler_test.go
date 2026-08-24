@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	testBaseURL  = "http://example.com"
-	testShortUrl = "abc12345"
-	targetURL    = "https://practicum.yandex.ru/"
+	testBaseURL = "http://example.com"
+	testSlug    = "abc12345"
+	targetURL   = "https://practicum.yandex.ru/"
 )
 
 func init() {
@@ -29,7 +29,7 @@ func init() {
 func newTestHandler() (*Handler, *service.Shortener) {
 	storage := repository.NewInMemoryStorage()
 	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
-		return testShortUrl, nil
+		return testSlug, nil
 	})
 	return NewHandler(shortener), shortener
 }
@@ -119,7 +119,7 @@ func TestCreateShortLinkHandler(t *testing.T) {
 			},
 			want: want{
 				code:     http.StatusCreated,
-				response: testBaseURL + "/" + testShortUrl,
+				response: testBaseURL + "/" + testSlug,
 			},
 		},
 		{
@@ -131,7 +131,7 @@ func TestCreateShortLinkHandler(t *testing.T) {
 			},
 			want: want{
 				code:     http.StatusCreated,
-				response: testBaseURL + "/" + testShortUrl,
+				response: testBaseURL + "/" + testSlug,
 			},
 		},
 		{
@@ -181,7 +181,7 @@ func TestRedirectHandler(t *testing.T) {
 			name: "positive: redirect to original URL",
 			actual: actual{
 				method: http.MethodGet,
-				target: "/" + testShortUrl,
+				target: "/" + testSlug,
 			},
 			want: want{
 				code:     http.StatusTemporaryRedirect,
