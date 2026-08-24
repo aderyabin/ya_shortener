@@ -26,26 +26,26 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 		return
 	}
 
-	shortURL, err := h.shortener.Shorten(string(bodyBytes))
+	slug, err := h.shortener.Shorten(string(bodyBytes))
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
 
-	c.String(http.StatusCreated, shortURL)
+	c.String(http.StatusCreated, slug)
 }
 
 // Redirect перенаправляет короткую ссылку на исходный URL.
 func (h *Handler) Redirect(c *gin.Context) {
-	id := c.Param("shortLink")
+	slug := c.Param("shortLink")
 
-	targetURL, ok := h.shortener.Resolve(id)
+	url, ok := h.shortener.Resolve(slug)
 	if !ok {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	c.Redirect(http.StatusTemporaryRedirect, targetURL)
+	c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
 // Default отвечает на некорректные запросы.

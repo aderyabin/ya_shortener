@@ -13,7 +13,7 @@ import (
 func main() {
 	cfg := config.NewConfig()
 
-	if cfg.GinLogs == "off" {
+	if !cfg.GinLogs {
 		gin.DefaultWriter = io.Discard // Отключает логи запросов
 	}
 

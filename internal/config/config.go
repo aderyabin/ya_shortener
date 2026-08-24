@@ -9,14 +9,14 @@ import (
 const (
 	defaultServerAddress = "localhost:8080"
 	defaultBaseURL       = "http://localhost:8080"
-	defaultGinLogs       = "off"
+	defaultGinLogs       = false
 )
 
 // Config — конфигурация сервиса сокращения ссылок.
 type Config struct {
 	ServerAddress string // адрес запуска HTTP-сервера
 	BaseURL       string // базовый адрес результирующего сокращённого URL
-	GinLogs       string // флаг включения логов запросов Gin
+	GinLogs       bool   // флаг включения логов запросов Gin
 }
 
 // NewConfig инициализирует конфигурацию из аргументов командной строки
@@ -27,8 +27,7 @@ func NewConfig() *Config {
 
 	flag.StringVar(&cfg.ServerAddress, "a", defaultServerAddress, "адрес запуска HTTP-сервера")
 	flag.StringVar(&cfg.BaseURL, "b", defaultBaseURL, "базовый адрес результирующего сокращённого URL")
-	flag.StringVar(&cfg.GinLogs, "g", defaultGinLogs, "включение логов запросов Gin (on/off)")
-
+	flag.BoolVar(&cfg.GinLogs, "g", defaultGinLogs, "включение логов запросов Gin (true/false)")
 	flag.Parse()
 
 	if env, ok := os.LookupEnv("SERVER_ADDRESS"); ok && env != "" {

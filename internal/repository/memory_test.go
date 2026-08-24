@@ -5,22 +5,22 @@ import (
 )
 
 const (
-	testURL      = "https://practicum.yandex.ru/"
-	testShortUrl = "d979ee5b-4f6b-4a1f-8c3d-0f2f1b2c3d4e"
+	testURL  = "https://practicum.yandex.ru/"
+	testSlug = "d979ee5b-4f6b-4a1f-8c3d-0f2f1b2c3d4e"
 )
 
-func TestInMemoryStorageGetShortUrl(t *testing.T) {
+func TestInMemoryStorageExists(t *testing.T) {
 	tests := []struct {
-		name         string
-		url          string
-		wantShortUrl string
-		found        bool
+		name     string
+		url      string
+		wantSlug string
+		found    bool
 	}{
 		{
-			name:         "positive: existing URL",
-			url:          testURL,
-			wantShortUrl: testShortUrl,
-			found:        true,
+			name:     "positive: existing URL",
+			url:      testURL,
+			wantSlug: testSlug,
+			found:    true,
 		},
 		{
 			name:  "negative: unknown URL",
@@ -34,15 +34,15 @@ func TestInMemoryStorageGetShortUrl(t *testing.T) {
 
 			// Подготаливаем данные
 			storage := NewInMemoryStorage()
-			storage.CreateShortUrl(testURL, testShortUrl)
+			storage.SaveURL(testURL, testSlug)
 
-			got, found := storage.GetShortUrl(tt.url)
+			got, found := storage.Exists(tt.url)
 
 			if found != tt.found {
 				t.Errorf("found: got %v, want %v", found, tt.found)
 			}
-			if got != tt.wantShortUrl {
-				t.Errorf("short URL: got %q, want %q", got, tt.wantShortUrl)
+			if got != tt.wantSlug {
+				t.Errorf("slug: got %q, want %q", got, tt.wantSlug)
 			}
 		})
 	}
@@ -50,30 +50,30 @@ func TestInMemoryStorageGetShortUrl(t *testing.T) {
 
 func TestInMemoryStorageGetURL(t *testing.T) {
 	tests := []struct {
-		name     string
-		shortUrl string
-		wantUrl  string
-		found    bool
+		name    string
+		slug    string
+		wantUrl string
+		found   bool
 	}{
 		{
-			name:     "positive: existing short URL",
-			shortUrl: testShortUrl,
-			wantUrl:  testURL,
-			found:    true,
+			name:    "positive: existing slug",
+			slug:    testSlug,
+			wantUrl: testURL,
+			found:   true,
 		},
 		{
-			name:     "negative: unknown short URL",
-			shortUrl: "00000000-0000-0000-0000-000000000000",
-			found:    false,
+			name:  "negative: unknown slug",
+			slug:  "00000000-0000-0000-0000-000000000000",
+			found: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := NewInMemoryStorage()
-			storage.CreateShortUrl(testURL, testShortUrl)
+			storage.SaveURL(testURL, testSlug)
 
-			got, found := storage.GetURL(tt.shortUrl)
+			got, found := storage.GetURL(tt.slug)
 
 			if found != tt.found {
 				t.Errorf("found: got %v, want %v", found, tt.found)
@@ -85,21 +85,21 @@ func TestInMemoryStorageGetURL(t *testing.T) {
 	}
 }
 
-func TestInMemoryStorageCreateShortUrl(t *testing.T) {
+func TestInMemoryStorageSaveURL(t *testing.T) {
 	storage := NewInMemoryStorage()
 
-	storage.CreateShortUrl(testURL, testShortUrl)
-	got, found := storage.GetShortUrl(testURL)
+	storage.SaveURL(testURL, testSlug)
+	got, found := storage.Exists(testURL)
 	if !found {
 		t.Fatal("URL not found after creation")
 	}
-	if got != testShortUrl {
-		t.Errorf("short URL: got %q, want %q", got, testShortUrl)
+	if got != testSlug {
+		t.Errorf("slug: got %q, want %q", got, testSlug)
 	}
 
-	gotURL, found := storage.GetURL(testShortUrl)
+	gotURL, found := storage.GetURL(testSlug)
 	if !found {
-		t.Fatal("short URL not found after creation")
+		t.Fatal("slug not found after creation")
 	}
 	if gotURL != testURL {
 		t.Errorf("URL: got %q, want %q", gotURL, testURL)
@@ -109,20 +109,20 @@ func TestInMemoryStorageCreateShortUrl(t *testing.T) {
 func TestInMemoryStorageCreateShortUrlOverwrite(t *testing.T) {
 	storage := NewInMemoryStorage()
 
-	storage.CreateShortUrl(testURL, testShortUrl)
+	storage.SaveURL(testURL, testSlug)
 
-	const newShortUrl = "11111111"
-	storage.CreateShortUrl(testURL, newShortUrl)
+	const newSlug = "11111111"
+	storage.SaveURL(testURL, newSlug)
 
-	got, found := storage.GetShortUrl(testURL)
+	got, found := storage.Exists(testURL)
 	if !found {
 		t.Fatal("URL not found after overwrite")
 	}
-	if got != newShortUrl {
-		t.Errorf("short URL after overwrite: got %q, want %q", got, newShortUrl)
+	if got != newSlug {
+		t.Errorf("slug after overwrite: got %q, want %q", got, newSlug)
 	}
 
-	if _, found := storage.GetURL(testShortUrl); found {
-		t.Errorf("old short URL %q should not resolve after overwrite", testShortUrl)
+	if _, found := storage.GetURL(testSlug); found {
+		t.Errorf("old short URL %q should not resolve after overwrite", testSlug)
 	}
 }
