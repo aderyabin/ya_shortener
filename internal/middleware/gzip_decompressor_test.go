@@ -29,16 +29,18 @@ func gzipCompress(t *testing.T, body string) *bytes.Buffer {
 	return &compressed
 }
 
+type decompressorTestStruct struct {
+	name            string
+	requestBody     string
+	compressBody    bool   // сжать ли тело запроса перед отправкой
+	contentEncoding string // заголовок Content-Encoding запроса
+	wantCode        int
+	wantBody        string // тело, которое должен увидеть хендлер
+	wantHandlerCall bool
+}
+
 func TestGzipDecompressor(t *testing.T) {
-	tests := []struct {
-		name            string
-		requestBody     string
-		compressBody    bool   // сжать ли тело запроса перед отправкой
-		contentEncoding string // заголовок Content-Encoding запроса
-		wantCode        int
-		wantBody        string // тело, которое должен увидеть хендлер
-		wantHandlerCall bool
-	}{
+	tests := []decompressorTestStruct{
 		{
 			name:            "positive: gzipped request body",
 			requestBody:     testJSONBody,
@@ -76,48 +78,60 @@ func TestGzipDecompressor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Подготавливаем тело запроса
-			body := []byte(tt.requestBody)
-			if tt.compressBody {
-				body = gzipCompress(t, tt.requestBody).Bytes()
-			}
 
-			// Подготавливаем роутер с middleware и хендлером-шпионом
-			var receivedBody string
-			handlerCalled := false
-			handler := func(c *gin.Context) {
-				handlerCalled = true
-				b, err := io.ReadAll(c.Request.Body)
-				if err != nil {
-					c.Status(http.StatusInternalServerError)
-					return
+			receivedCode, receivedBody, handlerCalled := prepareDecompressorTestResponse(t, tt)
+
+			if receivedCode != tt.wantCode {
+				t.Errorf("status code: got %d, want %d", receivedCode, tt.wantCode)
+				if handlerCalled != tt.wantHandlerCall {
+					t.Errorf("handler called: got %v, want %v", handlerCalled, tt.wantHandlerCall)
 				}
-				receivedBody = string(b)
-				c.Status(http.StatusOK)
-			}
-
-			router := gin.New()
-			router.Use(GzipDecompressor())
-			router.POST("/", handler)
-
-			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
-			if tt.contentEncoding != "" {
-				req.Header.Set("Content-Encoding", tt.contentEncoding)
-			}
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-
-			if w.Code != tt.wantCode {
-				t.Errorf("status code: got %d, want %d", w.Code, tt.wantCode)
-			}
-			if handlerCalled != tt.wantHandlerCall {
-				t.Errorf("handler called: got %v, want %v", handlerCalled, tt.wantHandlerCall)
-			}
-			if tt.wantHandlerCall && receivedBody != tt.wantBody {
-				t.Errorf("body: got %q, want %q", receivedBody, tt.wantBody)
+				if tt.wantHandlerCall && receivedBody != tt.wantBody {
+					t.Errorf("body: got %q, want %q", receivedBody, tt.wantBody)
+				}
 			}
 		})
 	}
+}
+
+// prepareDecompressorTestResponse прогоняет запрос из кейса tt через
+// GzipDecompressor и возвращает записанный ответ вместе с тем,
+// что увидел хендлер-шпион.
+func prepareDecompressorTestResponse(t *testing.T, tt decompressorTestStruct) (int, string, bool) {
+	t.Helper()
+
+	// Подготавливаем тело запроса
+	body := []byte(tt.requestBody)
+	if tt.compressBody {
+		body = gzipCompress(t, tt.requestBody).Bytes()
+	}
+
+	// Подготавливаем роутер с middleware и хендлером-шпионом
+	var receivedBody string
+	handlerCalled := false
+	handler := func(c *gin.Context) {
+		handlerCalled = true
+		b, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		receivedBody = string(b)
+		c.Status(http.StatusOK)
+	}
+
+	router := gin.New()
+	router.Use(GzipDecompressor())
+	router.POST("/", handler)
+
+	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
+	if tt.contentEncoding != "" {
+		req.Header.Set("Content-Encoding", tt.contentEncoding)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+
+	return recorder.Code, receivedBody, handlerCalled
 }
