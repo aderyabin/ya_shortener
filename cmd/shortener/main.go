@@ -30,6 +30,8 @@ func main() {
 	router := gin.New()
 
 	router.Use(middleware.ZapLogger(logger))
+	router.Use(middleware.GzipDecompressor())
+	router.Use(middleware.GzipCompressor())
 
 	router.POST("/", h.CreateShortLink)
 	router.POST("/api/shorten", h.CreateShortLinkFromJSON)
