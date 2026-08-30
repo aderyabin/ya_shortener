@@ -12,19 +12,23 @@ func TestNewConfig(t *testing.T) {
 		args           []string
 		envServer      string
 		envBase        string
+		envFile        string
 		wantServerAddr string
 		wantBaseURL    string
+		wantFilePath   string
 	}{
 		{
 			name:           "Sets default values",
 			wantServerAddr: "localhost:8080",
 			wantBaseURL:    "http://localhost:8080",
+			wantFilePath:   "storage.json",
 		},
 		{
 			name:           "Sets values from flags",
-			args:           []string{"-a", "localhost:9090", "-b", "http://example.com"},
+			args:           []string{"-a", "localhost:9090", "-b", "http://example.com", "-f", "/tmp/urls.json"},
 			wantServerAddr: "localhost:9090",
 			wantBaseURL:    "http://example.com",
+			wantFilePath:   "/tmp/urls.json",
 		},
 		{
 			name:           "Sets values from environment variables",
@@ -32,14 +36,18 @@ func TestNewConfig(t *testing.T) {
 			wantServerAddr: "localhost:7070",
 			envBase:        "http://example.com",
 			wantBaseURL:    "http://example.com",
+			envFile:        "/tmp/env-urls.json",
+			wantFilePath:   "/tmp/env-urls.json",
 		},
 		{
 			name:           "Envs prioritized over flags",
-			args:           []string{"-a", "localhost:9090", "-b", "http://example.com"},
+			args:           []string{"-a", "localhost:9090", "-b", "http://example.com", "-f", "/tmp/urls.json"},
 			envServer:      "localhost:7070",
 			envBase:        "http://env.example.com",
+			envFile:        "/tmp/env-urls.json",
 			wantServerAddr: "localhost:7070",
 			wantBaseURL:    "http://env.example.com",
+			wantFilePath:   "/tmp/env-urls.json",
 		},
 	}
 
@@ -53,12 +61,16 @@ func TestNewConfig(t *testing.T) {
 			// Гарантируем отсутствие переменных, если кейс их не задаёт.
 			os.Unsetenv("SERVER_ADDRESS")
 			os.Unsetenv("BASE_URL")
+			os.Unsetenv("FILE_STORAGE_PATH")
 
 			if tt.envServer != "" {
 				t.Setenv("SERVER_ADDRESS", tt.envServer)
 			}
 			if tt.envBase != "" {
 				t.Setenv("BASE_URL", tt.envBase)
+			}
+			if tt.envFile != "" {
+				t.Setenv("FILE_STORAGE_PATH", tt.envFile)
 			}
 
 			cfg := NewConfig()
@@ -68,6 +80,9 @@ func TestNewConfig(t *testing.T) {
 			}
 			if cfg.BaseURL != tt.wantBaseURL {
 				t.Errorf("BaseURL: got %q, want %q", cfg.BaseURL, tt.wantBaseURL)
+			}
+			if cfg.FileStoragePath != tt.wantFilePath {
+				t.Errorf("FileStoragePath: got %q, want %q", cfg.FileStoragePath, tt.wantFilePath)
 			}
 		})
 	}

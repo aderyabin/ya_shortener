@@ -30,7 +30,7 @@ func init() {
 // newTestHandler собирает Handler с in-memory хранилищем
 // и стабом генератора ID, возвращающим фиксированный идентификатор.
 func newTestHandler() (*Handler, *service.Shortener) {
-	storage := repository.NewInMemoryStorage()
+	storage, _ := repository.NewInMemoryStorage()
 	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
 		return testSlug, nil
 	})
@@ -160,7 +160,7 @@ func TestCreateShortLinkHandler(t *testing.T) {
 }
 
 func TestCreateShortLinkHandler_GeneratorError(t *testing.T) {
-	storage := repository.NewInMemoryStorage()
+	storage, _ := repository.NewInMemoryStorage()
 	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
 		return "", errors.New("random source unavailable")
 	})
@@ -291,7 +291,7 @@ func TestCreateShortLinkFromJSONHandler(t *testing.T) {
 }
 
 func TestCreateShortLinkFromJSONHandler_GeneratorError(t *testing.T) {
-	storage := repository.NewInMemoryStorage()
+	storage, _ := repository.NewInMemoryStorage()
 	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
 		return "", errors.New("random source unavailable")
 	})

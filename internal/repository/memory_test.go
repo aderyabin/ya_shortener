@@ -33,7 +33,7 @@ func TestInMemoryStorageExists(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			// Подготаливаем данные
-			storage := NewInMemoryStorage()
+			storage, _ := NewInMemoryStorage()
 			storage.SaveURL(testURL, testSlug)
 
 			got, found := storage.Exists(tt.url)
@@ -70,7 +70,7 @@ func TestInMemoryStorageGetURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage := NewInMemoryStorage()
+			storage, _ := NewInMemoryStorage()
 			storage.SaveURL(testURL, testSlug)
 
 			got, found := storage.GetURL(tt.slug)
@@ -86,7 +86,7 @@ func TestInMemoryStorageGetURL(t *testing.T) {
 }
 
 func TestInMemoryStorageSaveURL(t *testing.T) {
-	storage := NewInMemoryStorage()
+	storage, _ := NewInMemoryStorage()
 
 	storage.SaveURL(testURL, testSlug)
 	got, found := storage.Exists(testURL)
@@ -107,7 +107,7 @@ func TestInMemoryStorageSaveURL(t *testing.T) {
 }
 
 func TestInMemoryStorageCreateShortUrlOverwrite(t *testing.T) {
-	storage := NewInMemoryStorage()
+	storage, _ := NewInMemoryStorage()
 
 	storage.SaveURL(testURL, testSlug)
 

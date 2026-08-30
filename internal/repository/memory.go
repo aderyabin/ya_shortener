@@ -12,11 +12,11 @@ type InMemoryStorage struct {
 	urlToSlug map[string]string // исходный URL -> короткая ссылка (делаем ради ускорения поиска существующих коротких ссылок)
 }
 
-func NewInMemoryStorage() *InMemoryStorage {
+func NewInMemoryStorage() (*InMemoryStorage, error) {
 	return &InMemoryStorage{
 		slugToURL: make(map[string]string),
 		urlToSlug: make(map[string]string),
-	}
+	}, nil
 }
 
 // SaveURL сохраняет ссылку.
@@ -52,4 +52,16 @@ func (s *InMemoryStorage) GetURL(slug string) (string, bool) {
 
 	url, ok := s.slugToURL[slug]
 	return url, ok
+}
+
+func (s *InMemoryStorage) Size() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return len(s.slugToURL)
+}
+
+// Close реализует интерфейс Storage: для in-memory хранилища закрывать нечего.
+func (s *InMemoryStorage) Close() error {
+	return nil
 }

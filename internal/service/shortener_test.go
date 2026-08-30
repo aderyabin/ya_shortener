@@ -45,7 +45,7 @@ func TestShortenerShorten(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage := repository.NewInMemoryStorage()
+			storage, _ := repository.NewInMemoryStorage()
 			s := NewShortener(storage, testBaseURL, tt.genSlug)
 
 			got, err := s.Shorten(tt.url)
@@ -83,7 +83,7 @@ func TestShortenerShortenDuplicate(t *testing.T) {
 		return testSlug, nil
 	}
 
-	storage := repository.NewInMemoryStorage()
+	storage, _ := repository.NewInMemoryStorage()
 	s := NewShortener(storage, testBaseURL, genSlug)
 
 	first, err := s.Shorten(testURL)
@@ -127,7 +127,7 @@ func TestShortenerResolve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage := repository.NewInMemoryStorage()
+			storage, _ := repository.NewInMemoryStorage()
 			s := NewShortener(storage, testBaseURL, stubSlugGenerator)
 			storage.SaveURL(testURL, testSlug)
 

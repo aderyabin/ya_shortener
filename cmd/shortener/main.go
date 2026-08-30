@@ -22,7 +22,19 @@ func main() {
 	logger, _ := zap.NewProduction()
 
 	// Пока сохраним все в памяти, позже заменим на БД.
-	storage := repository.NewInMemoryStorage()
+	// storage, err := repository.NewInMemoryStorage()
+	// Пока сохраним все в файле, позже заменим на БД.
+	storage, err := repository.NewFileStorage(cfg.FileStoragePath)
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer func() {
+		if err := storage.Close(); err != nil {
+			logger.Error("failed to close storage", zap.Error(err))
+		}
+	}()
 
 	shortener := service.NewShortener(storage, cfg.BaseURL, service.RandomUUID)
 	h := handler.NewHandler(shortener)
