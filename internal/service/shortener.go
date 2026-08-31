@@ -4,10 +4,9 @@ import "github.com/google/uuid"
 
 // Storage — интерфейс хранилища ссылок.
 type Storage interface {
-	SaveURL(url, slug string)          // сохраняет соответствие между исходным URL и короткой ссылкой
+	SaveURL(url, slug string) error    // сохраняет соответствие между исходным URL и короткой ссылкой
 	Exists(url string) (string, bool)  // возвращает короткую ссылку по исходному URL, если она существует
 	GetURL(slug string) (string, bool) // возвращает исходный URL по короткой ссылке, если она существует (вспомогательная функция чтобы избежать дублей)
-	Close() error                      // закрывает хранилище (для файлового хранилища)
 }
 
 // SlugGenerator генерирует идентификатор короткой ссылки.
@@ -41,7 +40,9 @@ func (s *Shortener) Shorten(url string) (string, error) {
 		return "", err
 	}
 
-	s.storage.SaveURL(url, slug)
+	if err := s.storage.SaveURL(url, slug); err != nil {
+		return "", err
+	}
 
 	return s.baseURL + "/" + slug, nil
 }

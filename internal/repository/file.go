@@ -75,12 +75,13 @@ func (s *FileStorage) restore() error {
 }
 
 // SaveURL сохраняет ссылку в память и дублирует запись в файл.
-func (s *FileStorage) SaveURL(url, slug string) {
+func (s *FileStorage) SaveURL(url, slug string) error {
 	s.InMemoryStorage.SaveURL(url, slug)
 
 	s.mu.Lock()
-	_ = s.encoder.Encode(fileRecord{UUID: s.InMemoryStorage.Size(), ShortURL: slug, OriginalURL: url})
 	defer s.mu.Unlock()
+
+	return s.encoder.Encode(fileRecord{UUID: s.InMemoryStorage.Size(), ShortURL: slug, OriginalURL: url})
 }
 
 func (s *FileStorage) Exists(url string) (string, bool) {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"shortener/internal/model"
 	"shortener/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -50,13 +51,7 @@ func (h *Handler) Redirect(c *gin.Context) {
 }
 
 func (h *Handler) CreateShortLinkFromJSON(c *gin.Context) {
-	var request struct {
-		URL string `json:"url"`
-	}
-
-	var response struct {
-		SlugURL string `json:"result"`
-	}
+	var request model.ShortenRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil || request.URL == "" {
 		respondJSON(c, http.StatusBadRequest, gin.H{"error": "invalid request body"})
@@ -69,8 +64,7 @@ func (h *Handler) CreateShortLinkFromJSON(c *gin.Context) {
 		return
 	}
 
-	response.SlugURL = slugURL
-	respondJSON(c, http.StatusCreated, response)
+	respondJSON(c, http.StatusCreated, model.ShortenResponse{SlugURL: slugURL})
 }
 
 // Default отвечает на некорректные запросы.

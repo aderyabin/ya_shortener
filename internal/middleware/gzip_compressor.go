@@ -25,14 +25,11 @@ func GzipCompressor() gin.HandlerFunc {
 
 		// Подменяем writer: все записи хендлера пройдут через gzipWriter.
 		gw := &gzipWriter{ResponseWriter: c.Writer, gz: gzip.NewWriter(c.Writer)}
+		defer gw.Close()
 
 		c.Writer = gw
 
 		c.Next()
-
-		// Завершаем сжатый поток: gzip.Writer пишет контрольную сумму в Close,
-		// без этого клиент получит битый архив.
-		gw.Close()
 	}
 }
 

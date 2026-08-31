@@ -83,12 +83,12 @@ func TestGzipDecompressor(t *testing.T) {
 
 			if receivedCode != tt.wantCode {
 				t.Errorf("status code: got %d, want %d", receivedCode, tt.wantCode)
-				if handlerCalled != tt.wantHandlerCall {
-					t.Errorf("handler called: got %v, want %v", handlerCalled, tt.wantHandlerCall)
-				}
-				if tt.wantHandlerCall && receivedBody != tt.wantBody {
-					t.Errorf("body: got %q, want %q", receivedBody, tt.wantBody)
-				}
+			}
+			if handlerCalled != tt.wantHandlerCall {
+				t.Errorf("handler called: got %v, want %v", handlerCalled, tt.wantHandlerCall)
+			}
+			if tt.wantHandlerCall && receivedBody != tt.wantBody {
+				t.Errorf("body: got %q, want %q", receivedBody, tt.wantBody)
 			}
 		})
 	}

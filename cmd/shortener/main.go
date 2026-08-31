@@ -21,18 +21,19 @@ func main() {
 
 	logger, _ := zap.NewProduction()
 
-	// Пока сохраним все в памяти, позже заменим на БД.
-	// storage, err := repository.NewInMemoryStorage()
-	// Пока сохраним все в файле, позже заменим на БД.
-	storage, err := repository.NewFileStorage(cfg.FileStoragePath)
+	s, err := repository.NewFileStorage(cfg.FileStoragePath)
 
 	if err != nil {
-		panic(err)
+		logger.Fatal("failed to init storage", zap.Error(err))
 	}
 
+	var storage service.Storage = s
+
 	defer func() {
-		if err := storage.Close(); err != nil {
-			logger.Error("failed to close storage", zap.Error(err))
+		if closer, ok := storage.(interface{ Close() error }); ok {
+			if err := closer.Close(); err != nil {
+				logger.Error("failed to close storage", zap.Error(err))
+			}
 		}
 	}()
 
@@ -52,6 +53,6 @@ func main() {
 	router.NoRoute(h.Default)
 
 	if err := router.Run(cfg.ServerAddress); err != nil {
-		panic(err)
+		logger.Fatal("failed to run server", zap.Error(err))
 	}
 }

@@ -58,11 +58,6 @@ func TestNewConfig(t *testing.T) {
 			flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
 			os.Args = append([]string{"test"}, tt.args...)
 
-			// Гарантируем отсутствие переменных, если кейс их не задаёт.
-			os.Unsetenv("SERVER_ADDRESS")
-			os.Unsetenv("BASE_URL")
-			os.Unsetenv("FILE_STORAGE_PATH")
-
 			if tt.envServer != "" {
 				t.Setenv("SERVER_ADDRESS", tt.envServer)
 			}

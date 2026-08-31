@@ -20,7 +20,7 @@ func NewInMemoryStorage() (*InMemoryStorage, error) {
 }
 
 // SaveURL сохраняет ссылку.
-func (s *InMemoryStorage) SaveURL(url, slug string) {
+func (s *InMemoryStorage) SaveURL(url, slug string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -32,6 +32,8 @@ func (s *InMemoryStorage) SaveURL(url, slug string) {
 
 	s.slugToURL[slug] = url
 	s.urlToSlug[url] = slug
+
+	return nil
 }
 
 // Exists Возвращает короткий урл по исходному URL и true, если она существует,
@@ -59,9 +61,4 @@ func (s *InMemoryStorage) Size() int {
 	defer s.mu.RUnlock()
 
 	return len(s.slugToURL)
-}
-
-// Close реализует интерфейс Storage: для in-memory хранилища закрывать нечего.
-func (s *InMemoryStorage) Close() error {
-	return nil
 }
