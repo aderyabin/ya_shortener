@@ -61,13 +61,13 @@ func TestFileStorageGetURL(t *testing.T) {
 	tests := []struct {
 		name    string
 		slug    string
-		wantUrl string
+		wantURL string
 		found   bool
 	}{
 		{
 			name:    "positive: existing slug",
 			slug:    testSlug,
-			wantUrl: testURL,
+			wantURL: testURL,
 			found:   true,
 		},
 		{
@@ -92,8 +92,8 @@ func TestFileStorageGetURL(t *testing.T) {
 			if found != tt.found {
 				t.Errorf("found: got %v, want %v", found, tt.found)
 			}
-			if got != tt.wantUrl {
-				t.Errorf("URL: got %q, want %q", got, tt.wantUrl)
+			if got != tt.wantURL {
+				t.Errorf("URL: got %q, want %q", got, tt.wantURL)
 			}
 		})
 	}
