@@ -1,6 +1,10 @@
 package service
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // Storage — интерфейс хранилища ссылок.
 type Storage interface {
@@ -37,11 +41,11 @@ func (s *Shortener) Shorten(url string) (string, error) {
 
 	slug, err := s.slugGenerator()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generate short link id: %w", err)
 	}
 
 	if err := s.storage.SaveURL(url, slug); err != nil {
-		return "", err
+		return "", fmt.Errorf("save short link for url %q: %w", url, err)
 	}
 
 	return s.baseURL + "/" + slug, nil
@@ -56,7 +60,7 @@ func (s *Shortener) Resolve(slug string) (string, bool) {
 func RandomUUID() (string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generate uuid: %w", err)
 	}
 
 	return id.String(), nil

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"sync"
 )
@@ -31,13 +32,13 @@ type FileStorage struct {
 func NewFileStorage(path string) (*FileStorage, error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open storage file %q: %w", path, err)
 	}
 
 	inMemStorage, err := NewInMemoryStorage()
 	if err != nil {
 		_ = file.Close()
-		return nil, err
+		return nil, fmt.Errorf("init in-memory storage: %w", err)
 	}
 
 	s := &FileStorage{
@@ -48,7 +49,7 @@ func NewFileStorage(path string) (*FileStorage, error) {
 
 	if err := s.restore(); err != nil {
 		_ = file.Close()
-		return nil, err
+		return nil, fmt.Errorf("restore storage from file %q: %w", path, err)
 	}
 
 	return s, nil
@@ -65,13 +66,17 @@ func (s *FileStorage) restore() error {
 
 		var rec fileRecord
 		if err := json.Unmarshal(line, &rec); err != nil {
-			return err
+			return fmt.Errorf("unmarshal storage record %q: %w", string(line), err)
 		}
 
 		s.InMemoryStorage.SaveURL(rec.OriginalURL, rec.ShortURL)
 	}
 
-	return scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("read storage file: %w", err)
+	}
+
+	return nil
 }
 
 // SaveURL сохраняет ссылку в память и дублирует запись в файл.
@@ -81,7 +86,11 @@ func (s *FileStorage) SaveURL(url, slug string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.encoder.Encode(fileRecord{UUID: s.InMemoryStorage.Size(), ShortURL: slug, OriginalURL: url})
+	if err := s.encoder.Encode(fileRecord{UUID: s.InMemoryStorage.Size(), ShortURL: slug, OriginalURL: url}); err != nil {
+		return fmt.Errorf("encode storage record for short_url %q: %w", slug, err)
+	}
+
+	return nil
 }
 
 func (s *FileStorage) Exists(url string) (string, bool) {
@@ -94,5 +103,8 @@ func (s *FileStorage) GetURL(slug string) (string, bool) {
 
 // Close закрывает файл хранилища.
 func (s *FileStorage) Close() error {
-	return s.file.Close()
+	if err := s.file.Close(); err != nil {
+		return fmt.Errorf("close storage file: %w", err)
+	}
+	return nil
 }
