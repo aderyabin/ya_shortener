@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
+	"shortener/internal/model"
 	"shortener/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -26,13 +28,13 @@ func (h *Handler) CreateShortLink(c *gin.Context) {
 		return
 	}
 
-	slug, err := h.shortener.Shorten(string(bodyBytes))
+	slugURL, err := h.shortener.Shorten(string(bodyBytes))
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
 
-	c.String(http.StatusCreated, slug)
+	c.String(http.StatusCreated, slugURL)
 }
 
 // Redirect перенаправляет короткую ссылку на исходный URL.
@@ -48,7 +50,33 @@ func (h *Handler) Redirect(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
+func (h *Handler) CreateShortLinkFromJSON(c *gin.Context) {
+	var request model.ShortenRequest
+
+	if err := c.ShouldBindJSON(&request); err != nil || request.URL == "" {
+		respondJSON(c, http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	slugURL, err := h.shortener.Shorten(request.URL)
+	if err != nil {
+		respondJSON(c, http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	respondJSON(c, http.StatusCreated, model.ShortenResponse{SlugURL: slugURL})
+}
+
 // Default отвечает на некорректные запросы.
 func (h *Handler) Default(c *gin.Context) {
 	c.Status(http.StatusBadRequest)
+}
+
+// respondJSON маршалит payload
+// и отправляет его как JSON-ответ со статусом status.
+// Не используем c.JSON, чтобы избежать автоматического
+// добавления Content-Type: application/json; charset=utf-8.
+func respondJSON(c *gin.Context, status int, payload any) {
+	jsonData, _ := json.Marshal(payload)
+	c.Data(status, "application/json", jsonData)
 }

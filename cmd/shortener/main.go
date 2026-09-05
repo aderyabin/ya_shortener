@@ -4,10 +4,12 @@ import (
 	"io"
 	"shortener/internal/config"
 	"shortener/internal/handler"
+	"shortener/internal/middleware"
 	"shortener/internal/repository"
 	"shortener/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -17,20 +19,40 @@ func main() {
 		gin.DefaultWriter = io.Discard // Отключает логи запросов
 	}
 
-	// Пока сохраним все в памяти, позже заменим на БД.
-	storage := repository.NewInMemoryStorage()
+	logger, _ := zap.NewProduction()
+
+	s, err := repository.NewFileStorage(cfg.FileStoragePath)
+
+	if err != nil {
+		logger.Fatal("failed to init storage", zap.Error(err))
+	}
+
+	var storage service.Storage = s
+
+	defer func() {
+		if closer, ok := storage.(interface{ Close() error }); ok {
+			if err := closer.Close(); err != nil {
+				logger.Error("failed to close storage", zap.Error(err))
+			}
+		}
+	}()
 
 	shortener := service.NewShortener(storage, cfg.BaseURL, service.RandomUUID)
 	h := handler.NewHandler(shortener)
 
-	router := gin.Default()
+	router := gin.New()
+
+	router.Use(middleware.ZapLogger(logger))
+	router.Use(middleware.GzipDecompressor())
+	router.Use(middleware.GzipCompressor())
 
 	router.POST("/", h.CreateShortLink)
+	router.POST("/api/shorten", h.CreateShortLinkFromJSON)
 	router.GET("/:shortLink", h.Redirect)
 
 	router.NoRoute(h.Default)
 
 	if err := router.Run(cfg.ServerAddress); err != nil {
-		panic(err)
+		logger.Fatal("failed to run server", zap.Error(err))
 	}
 }

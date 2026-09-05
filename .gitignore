@@ -23,3 +23,5 @@ vendor/
 .vscode
 autotests/
 .DS_Store
+storage.json
+.tools/

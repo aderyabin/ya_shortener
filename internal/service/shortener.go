@@ -1,10 +1,14 @@
 package service
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // Storage — интерфейс хранилища ссылок.
 type Storage interface {
-	SaveURL(url, slug string)          // сохраняет соответствие между исходным URL и короткой ссылкой
+	SaveURL(url, slug string) error    // сохраняет соответствие между исходным URL и короткой ссылкой
 	Exists(url string) (string, bool)  // возвращает короткую ссылку по исходному URL, если она существует
 	GetURL(slug string) (string, bool) // возвращает исходный URL по короткой ссылке, если она существует (вспомогательная функция чтобы избежать дублей)
 }
@@ -37,10 +41,12 @@ func (s *Shortener) Shorten(url string) (string, error) {
 
 	slug, err := s.slugGenerator()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generate short link id: %w", err)
 	}
 
-	s.storage.SaveURL(url, slug)
+	if err := s.storage.SaveURL(url, slug); err != nil {
+		return "", fmt.Errorf("save short link for url %q: %w", url, err)
+	}
 
 	return s.baseURL + "/" + slug, nil
 }
@@ -54,7 +60,7 @@ func (s *Shortener) Resolve(slug string) (string, bool) {
 func RandomUUID() (string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generate uuid: %w", err)
 	}
 
 	return id.String(), nil

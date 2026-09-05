@@ -45,7 +45,7 @@ func TestShortenerShorten(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage := repository.NewInMemoryStorage()
+			storage, _ := repository.NewInMemoryStorage()
 			s := NewShortener(storage, testBaseURL, tt.genSlug)
 
 			got, err := s.Shorten(tt.url)
@@ -83,7 +83,7 @@ func TestShortenerShortenDuplicate(t *testing.T) {
 		return testSlug, nil
 	}
 
-	storage := repository.NewInMemoryStorage()
+	storage, _ := repository.NewInMemoryStorage()
 	s := NewShortener(storage, testBaseURL, genSlug)
 
 	first, err := s.Shorten(testURL)
@@ -108,30 +108,30 @@ func TestShortenerShortenDuplicate(t *testing.T) {
 func TestShortenerResolve(t *testing.T) {
 	tests := []struct {
 		name     string
-		shortUrl string
+		shortURL string
 		want     string
 		found    bool
 	}{
 		{
 			name:     "positive: existing slug",
-			shortUrl: testSlug,
+			shortURL: testSlug,
 			want:     testURL,
 			found:    true,
 		},
 		{
 			name:     "negative: unknown slug",
-			shortUrl: "00000000",
+			shortURL: "00000000",
 			found:    false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage := repository.NewInMemoryStorage()
+			storage, _ := repository.NewInMemoryStorage()
 			s := NewShortener(storage, testBaseURL, stubSlugGenerator)
 			storage.SaveURL(testURL, testSlug)
 
-			got, found := s.Resolve(tt.shortUrl)
+			got, found := s.Resolve(tt.shortURL)
 
 			if found != tt.found {
 				t.Errorf("found: got %v, want %v", found, tt.found)

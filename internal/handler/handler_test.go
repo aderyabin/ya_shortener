@@ -5,11 +5,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
-	"testing"
-
 	"shortener/internal/repository"
 	"shortener/internal/service"
+	"strings"
+	"testing"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,6 +19,10 @@ const (
 	targetURL   = "https://practicum.yandex.ru/"
 )
 
+var responseJSONHeaders = map[string]string{
+	"Content-Type": "application/json",
+}
+
 func init() {
 	gin.SetMode(gin.TestMode) // Отключает debug-логи gin в тестах
 }
@@ -27,7 +30,7 @@ func init() {
 // newTestHandler собирает Handler с in-memory хранилищем
 // и стабом генератора ID, возвращающим фиксированный идентификатор.
 func newTestHandler() (*Handler, *service.Shortener) {
-	storage := repository.NewInMemoryStorage()
+	storage, _ := repository.NewInMemoryStorage()
 	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
 		return testSlug, nil
 	})
@@ -36,9 +39,10 @@ func newTestHandler() (*Handler, *service.Shortener) {
 
 // want описывает ожидаемый результат запроса.
 type want struct {
-	code     int    // ожидаемый HTTP-статус
-	response string // ожидаемое тело ответа
-	location string // ожидаемый заголовок Location
+	code            int               // ожидаемый HTTP-статус
+	responseBody    string            // ожидаемое тело ответа
+	responseHeaders map[string]string // ожидаемые заголовки ответа
+	location        string            // ожидаемый заголовок Location
 }
 
 // actual описывает параметры входящего запроса.
@@ -88,14 +92,20 @@ func runTest(t *testing.T, handler gin.HandlerFunc, tt testCase) {
 		t.Errorf("status code: got %d, want %d", got, tt.want.code)
 	}
 
-	if tt.want.response != "" {
+	if tt.want.responseBody != "" {
 		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {
-			t.Fatalf("failed to read response body: %v", err)
+			t.Fatalf("failed to read responseBody body: %v", err)
 		}
 
-		if got := string(bodyBytes); got != tt.want.response {
-			t.Errorf("body: got %q, want %q", got, tt.want.response)
+		if got := string(bodyBytes); got != tt.want.responseBody {
+			t.Errorf("body: got %q, want %q", got, tt.want.responseBody)
+		}
+	}
+
+	for key, value := range tt.want.responseHeaders {
+		if got := res.Header.Get(key); got != value {
+			t.Errorf("header %q: got %q, want %q", key, got, value)
 		}
 	}
 
@@ -118,20 +128,20 @@ func TestCreateShortLinkHandler(t *testing.T) {
 				body:   targetURL,
 			},
 			want: want{
-				code:     http.StatusCreated,
-				response: testBaseURL + "/" + testSlug,
+				code:         http.StatusCreated,
+				responseBody: testBaseURL + "/" + testSlug,
 			},
 		},
 		{
-			name: "positive: request scheme does not affect response",
+			name: "positive: request scheme does not affect responseBody",
 			actual: actual{
 				method: http.MethodPost,
 				target: "https://example.com/",
 				body:   targetURL,
 			},
 			want: want{
-				code:     http.StatusCreated,
-				response: testBaseURL + "/" + testSlug,
+				code:         http.StatusCreated,
+				responseBody: testBaseURL + "/" + testSlug,
 			},
 		},
 		{
@@ -150,7 +160,7 @@ func TestCreateShortLinkHandler(t *testing.T) {
 }
 
 func TestCreateShortLinkHandler_GeneratorError(t *testing.T) {
-	storage := repository.NewInMemoryStorage()
+	storage, _ := repository.NewInMemoryStorage()
 	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
 		return "", errors.New("random source unavailable")
 	})
@@ -230,4 +240,74 @@ func TestDefaultHandler(t *testing.T) {
 	}
 
 	runTests(t, h.Default, tests)
+}
+
+func TestCreateShortLinkFromJSONHandler(t *testing.T) {
+	h, _ := newTestHandler()
+
+	tests := []testCase{
+		{
+			name: "positive: valid JSON request",
+			actual: actual{
+				method: http.MethodPost,
+				target: "/api/shorten",
+				body:   `{"url":"` + targetURL + `"}`,
+			},
+			want: want{
+				code:            http.StatusCreated,
+				responseBody:    `{"result":"` + testBaseURL + "/" + testSlug + `"}`,
+				responseHeaders: responseJSONHeaders,
+			},
+		},
+		{
+			name: "negative: empty JSON body",
+			actual: actual{
+				method: http.MethodPost,
+				target: "/api/shorten",
+				body:   `{"url":""}`,
+			},
+			want: want{
+				code:            http.StatusBadRequest,
+				responseHeaders: responseJSONHeaders,
+				responseBody:    `{"error":"invalid request body"}`,
+			},
+		},
+		{
+			name: "negative: invalid JSON",
+			actual: actual{
+				method: http.MethodPost,
+				target: "/api/shorten",
+				body:   `invalid json`,
+			},
+			want: want{
+				code:            http.StatusBadRequest,
+				responseHeaders: responseJSONHeaders,
+				responseBody:    `{"error":"invalid request body"}`,
+			},
+		},
+	}
+
+	runTests(t, h.CreateShortLinkFromJSON, tests)
+}
+
+func TestCreateShortLinkFromJSONHandler_GeneratorError(t *testing.T) {
+	storage, _ := repository.NewInMemoryStorage()
+	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
+		return "", errors.New("random source unavailable")
+	})
+	h := NewHandler(shortener)
+
+	runTest(t, h.CreateShortLinkFromJSON, testCase{
+		name: "negative: ID generator failure",
+		actual: actual{
+			method: http.MethodPost,
+			target: "/api/shorten",
+			body:   `{"url":"` + targetURL + `"}`,
+		},
+		want: want{
+			code:            http.StatusInternalServerError,
+			responseHeaders: responseJSONHeaders,
+			responseBody:    `{"error":"internal server error"}`,
+		},
+	})
 }
