@@ -1,6 +1,9 @@
 SERVER_PORT := $(shell ./autotests/random unused-port 2>/dev/null)
 TEMP_FILE := $(shell ./autotests/random tempfile 2>/dev/null)
 
+
+all: vet test test_iter
+
 run:
 	go run cmd/shortener/*.go -g on
 
@@ -13,6 +16,9 @@ update:
 
 test:
 	go test -v ./...
+
+vet:
+	go vet -vettool=./.tools/statictest ./...
 
 test_iter:
 	$(eval BRANCH_NAME := $(shell git branch --show-current 2>/dev/null))
