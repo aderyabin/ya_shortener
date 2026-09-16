@@ -75,7 +75,7 @@ func storageSelector(storageName string, cfg *config.Config) (service.Storage, e
 	case "file":
 		return repository.NewFileStorage(cfg.FileStoragePath)
 	case "database":
-		return repository.NewDatabaseStorage(cfg.DbDSN)
+		return repository.NewDatabaseStorage(cfg.DBDSN)
 	default:
 		return nil, fmt.Errorf("unknown storage: %q", storageName)
 	}

@@ -12,7 +12,7 @@ const (
 	defaultBaseURL         = "http://localhost:8080"
 	defaultGinLogs         = false
 	defaultFileStoragePath = "storage.json"
-	defaultDbDSN           = "postgres://@localhost:5432/url_shortener"
+	defaultDBDSN           = "postgres://@localhost:5432/url_shortener"
 	defaultStorage         = "database"
 )
 
@@ -23,7 +23,7 @@ type Config struct {
 	GinLogs         bool   // флаг включения логов запросов Gin
 	FileStoragePath string // путь до JSON-файла, куда сохраняются сокращённые URL
 	Storage         string // тип хранилища: memory, file, database
-	DbDSN           string // DSN для подключения к базе данных PostgreSQL
+	DBDSN           string // DSN для подключения к базе данных PostgreSQL
 }
 
 // NewConfig инициализирует конфигурацию из аргументов командной строки
@@ -39,7 +39,7 @@ func NewConfig() *Config {
 	flag.StringVar(&cfg.BaseURL, "b", defaultBaseURL, "базовый адрес результирующего сокращённого URL")
 	flag.BoolVar(&cfg.GinLogs, "g", defaultGinLogs, "включение логов запросов Gin (true/false)")
 	flag.StringVar(&cfg.FileStoragePath, "f", defaultFileStoragePath, "путь до JSON-файла для хранения сокращённых URL")
-	flag.StringVar(&cfg.DbDSN, "d", defaultDbDSN, "DSN для подключения к базе данных PostgreSQL")
+	flag.StringVar(&cfg.DBDSN, "d", defaultDBDSN, "DSN для подключения к базе данных PostgreSQL")
 	flag.Parse()
 
 	if !slices.Contains(availableStorageTypes, cfg.Storage) {
@@ -57,7 +57,7 @@ func NewConfig() *Config {
 	}
 
 	if env, ok := os.LookupEnv("DATABASE_URL"); ok && env != "" {
-		cfg.DbDSN = env
+		cfg.DBDSN = env
 	}
 
 	return cfg
