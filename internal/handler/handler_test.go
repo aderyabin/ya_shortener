@@ -365,3 +365,50 @@ func TestPingHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestPingRoute(t *testing.T) {
+	storage, _ := repository.NewInMemoryStorage()
+	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
+		return testSlug, nil
+	})
+
+	tests := []struct {
+		name   string
+		pinger Pinger
+		want   int
+	}{
+		{
+			name:   "negative: no pinger configured",
+			pinger: nil,
+			want:   http.StatusInternalServerError,
+		},
+		{
+			name:   "negative: pinger returns error",
+			pinger: &mockPinger{err: errors.New("db unavailable")},
+			want:   http.StatusInternalServerError,
+		},
+		{
+			name:   "positive: pinger succeeds",
+			pinger: &mockPinger{err: nil},
+			want:   http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := NewHandler(shortener, tt.pinger)
+
+			router := gin.New()
+			router.GET("/ping", h.Ping)
+
+			req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			if got := w.Code; got != tt.want {
+				t.Errorf("status code: got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
