@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"shortener/internal/config"
 	"shortener/internal/handler"
@@ -21,13 +22,13 @@ func main() {
 
 	logger, _ := zap.NewProduction()
 
-	s, err := repository.NewFileStorage(cfg.FileStoragePath)
+	storageName := cfg.Storage
+
+	storage, err := storageSelector(storageName, cfg)
 
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
-
-	var storage service.Storage = s
 
 	defer func() {
 		if closer, ok := storage.(interface{ Close() error }); ok {
@@ -38,7 +39,13 @@ func main() {
 	}()
 
 	shortener := service.NewShortener(storage, cfg.BaseURL, service.RandomUUID)
-	h := handler.NewHandler(shortener)
+
+	var pinger handler.Pinger
+	if p, ok := storage.(handler.Pinger); ok {
+		pinger = p
+	}
+
+	h := handler.NewHandler(shortener, pinger)
 
 	router := gin.New()
 
@@ -49,10 +56,25 @@ func main() {
 	router.POST("/", h.CreateShortLink)
 	router.POST("/api/shorten", h.CreateShortLinkFromJSON)
 	router.GET("/:shortLink", h.Redirect)
+	router.GET("/ping", h.Ping)
 
 	router.NoRoute(h.Default)
 
 	if err := router.Run(cfg.ServerAddress); err != nil {
 		logger.Fatal("failed to run server", zap.Error(err))
+	}
+}
+
+// storageSelector создаёт хранилище по его имени.
+func storageSelector(storageName string, cfg *config.Config) (service.Storage, error) {
+	switch storageName {
+	case "memory":
+		return repository.NewInMemoryStorage()
+	case "file":
+		return repository.NewFileStorage(cfg.FileStoragePath)
+	case "database":
+		return repository.NewDatabaseStorage(cfg.DBDSN)
+	default:
+		return nil, fmt.Errorf("unknown storage: %q", storageName)
 	}
 }
