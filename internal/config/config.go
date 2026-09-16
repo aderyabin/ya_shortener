@@ -12,7 +12,7 @@ const (
 	defaultBaseURL         = "http://localhost:8080"
 	defaultGinLogs         = false
 	defaultFileStoragePath = "storage.json"
-	defaultDBDSN           = "postgres://@localhost:5432/url_shortener"
+	defaultDBDSN           = "postgres://@localhost:5432/url_shortener?sslmode=disable"
 	defaultStorage         = "database"
 )
 

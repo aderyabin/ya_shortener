@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS links (
+    uuid SERIAL PRIMARY KEY,
+    short_url VARCHAR(255) NOT NULL UNIQUE,
+    original_url TEXT NOT NULL
+);
