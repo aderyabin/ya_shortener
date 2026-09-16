@@ -62,3 +62,10 @@ test_iter9: test_iter8
 			-binary-path=cmd/shortener/shortener \
 			-source-path=. \
 			-file-storage-path=$(TEMP_FILE)
+
+test_iter10: test_iter9
+	./autotests/shortenertest -test.v -test.run=^TestIteration10$ \
+              -binary-path=cmd/shortener/shortener \
+              -source-path=. \
+              -database-dsn=$DATABASE_CONN_STRING
+	wipedb $DATABASE_CONN_STRING
