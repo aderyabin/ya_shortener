@@ -24,13 +24,11 @@ func main() {
 
 	storageName := cfg.Storage
 
-	s, err := storageSelector(storageName, cfg)
+	storage, err := storageSelector(storageName, cfg)
 
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
-
-	var storage service.Storage = s
 
 	defer func() {
 		if closer, ok := storage.(interface{ Close() error }); ok {
