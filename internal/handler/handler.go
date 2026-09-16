@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -10,13 +11,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Pinger проверяет доступность хранилища (например, базы данных).
+type Pinger interface {
+	Ping(ctx context.Context) error
+}
+
 // Handler обрабатывает HTTP-запросы сервиса сокращения ссылок.
 type Handler struct {
 	shortener *service.Shortener
+	pinger    Pinger
 }
 
-func NewHandler(shortener *service.Shortener) *Handler {
-	return &Handler{shortener: shortener}
+func NewHandler(shortener *service.Shortener, pinger Pinger) *Handler {
+	return &Handler{shortener: shortener, pinger: pinger}
 }
 
 // CreateShortLink принимает исходный URL в теле запроса
@@ -65,6 +72,20 @@ func (h *Handler) CreateShortLinkFromJSON(c *gin.Context) {
 	}
 
 	respondJSON(c, http.StatusCreated, model.ShortenResponse{SlugURL: slugURL})
+}
+
+func (h *Handler) Ping(c *gin.Context) {
+	if h.pinger == nil {
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.pinger.Ping(c); err != nil {
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 
 // Default отвечает на некорректные запросы.

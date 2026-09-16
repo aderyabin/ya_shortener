@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -34,7 +35,7 @@ func newTestHandler() (*Handler, *service.Shortener) {
 	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
 		return testSlug, nil
 	})
-	return NewHandler(shortener), shortener
+	return NewHandler(shortener, nil), shortener
 }
 
 // want описывает ожидаемый результат запроса.
@@ -164,7 +165,7 @@ func TestCreateShortLinkHandler_GeneratorError(t *testing.T) {
 	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
 		return "", errors.New("random source unavailable")
 	})
-	h := NewHandler(shortener)
+	h := NewHandler(shortener, nil)
 
 	runTest(t, h.CreateShortLink, testCase{
 		name: "negative: ID generator failure",
@@ -295,7 +296,7 @@ func TestCreateShortLinkFromJSONHandler_GeneratorError(t *testing.T) {
 	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
 		return "", errors.New("random source unavailable")
 	})
-	h := NewHandler(shortener)
+	h := NewHandler(shortener, nil)
 
 	runTest(t, h.CreateShortLinkFromJSON, testCase{
 		name: "negative: ID generator failure",
@@ -310,4 +311,57 @@ func TestCreateShortLinkFromJSONHandler_GeneratorError(t *testing.T) {
 			responseBody:    `{"error":"internal server error"}`,
 		},
 	})
+}
+
+// mockPinger — тестовая реализация Pinger.
+type mockPinger struct {
+	err error
+}
+
+func (m *mockPinger) Ping(_ context.Context) error {
+	return m.err
+}
+
+func TestPingHandler(t *testing.T) {
+	storage, _ := repository.NewInMemoryStorage()
+	shortener := service.NewShortener(storage, testBaseURL, func() (string, error) {
+		return testSlug, nil
+	})
+
+	tests := []struct {
+		name   string
+		pinger Pinger
+		want   int
+	}{
+		{
+			name:   "negative: no pinger configured",
+			pinger: nil,
+			want:   http.StatusInternalServerError,
+		},
+		{
+			name:   "negative: pinger returns error",
+			pinger: &mockPinger{err: errors.New("db unavailable")},
+			want:   http.StatusInternalServerError,
+		},
+		{
+			name:   "positive: pinger succeeds",
+			pinger: &mockPinger{err: nil},
+			want:   http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := NewHandler(shortener, tt.pinger)
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodGet, "/ping", nil)
+
+			h.Ping(c)
+
+			if got := c.Writer.Status(); got != tt.want {
+				t.Errorf("status code: got %d, want %d", got, tt.want)
+			}
+		})
+	}
 }
